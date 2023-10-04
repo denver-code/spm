@@ -1,6 +1,10 @@
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::error::Error;
+use std::fs::File;
+use std::io::Write;
+use std::os::unix::prelude::PermissionsExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct GitHubRelease {
@@ -14,11 +18,6 @@ struct GitHubReleaseAsset {
     url: String,
 }
 
-use std::error::Error;
-use std::fs::File;
-use std::io::Write;
-use std::os::unix::prelude::PermissionsExt;
-
 fn download_package(url: &str, filename: &str) -> Result<(), Box<dyn Error>> {
     let client = reqwest::blocking::Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_9) AppleWebKit/600.31 (KHTML, like Gecko) Chrome/54.0.2042.261 Safari/536")
@@ -29,7 +28,7 @@ fn download_package(url: &str, filename: &str) -> Result<(), Box<dyn Error>> {
     match response.status() {
         reqwest::StatusCode::OK => {
             let content = response.bytes()?; // Use bytes() instead of text() for binary data
-            let mut file = File::create(filename)?;
+            let mut file = File::create(format!("bin/{}", filename))?;
 
             // Write the content to the file
             file.write_all(&content)?;
@@ -39,7 +38,7 @@ fn download_package(url: &str, filename: &str) -> Result<(), Box<dyn Error>> {
             {
                 let mut permissions = file.metadata()?.permissions();
                 permissions.set_mode(0o755); // This sets the permission to rwxr-xr-x
-                std::fs::set_permissions(filename, permissions)?;
+                std::fs::set_permissions(format!("bin/{}", filename), permissions)?;
             }
 
             Ok(())
